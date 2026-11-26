@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, redirect
 import os
 import socket
 import psycopg2
@@ -212,7 +212,12 @@ STAFF_TEMPLATE = """<!DOCTYPE html>
     {% if authorized %}
       <div class="ok">Signed in as <strong>{{ staff_user }}</strong></div>
       <p>Active bookings in database: <strong>{{ count }}</strong></p>
-      <p><a href="/">← Back to guest portal</a></p>
+      <p>
+        <a href="/">← Back to guest portal</a>
+        {% if auth_mode == 'entra' %}
+         · <a href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>
+        {% endif %}
+      </p>
     {% else %}
       <form method="POST">
         <p style="font-size:13px;color:#475569;">Legacy shared admin login (replaced by Entra ID SSO + MFA in Azure).</p>
@@ -283,12 +288,14 @@ def staff():
     error = None
 
     if AUTH_MODE == "entra":
-        # Azure Container Apps built-in auth injects this header
-        staff_user = request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME")
-        if staff_user:
-            authorized = True
-        else:
-            error = "Entra ID authentication header missing."
+        # Azure Container Apps Easy Auth injects these headers after sign-in
+        staff_user = (
+            request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME")
+            or request.headers.get("X-MS-CLIENT-PRINCIPAL-ID")
+        )
+        if not staff_user:
+            return redirect("/.auth/login/aad?post_login_redirect_uri=/staff")
+        authorized = True
     else:
         if request.method == "POST":
             if request.form.get("username") == "admin" and request.form.get("password") == LEGACY_STAFF_PASSWORD:
