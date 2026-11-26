@@ -40,9 +40,7 @@ jobs:
             echo "First deployment detected: bootstrapping infrastructure..."
             az deployment group create \
               --resource-group "$RESOURCE_GROUP" \
-              --template-file infra/main.bicep \
               --parameters "$PARAM_FILE" \
-              --parameters \
                 dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
                 arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
                 containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
@@ -66,9 +64,7 @@ jobs:
         run: |
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
             --parameters "$PARAM_FILE" \
-            --parameters \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
@@ -78,9 +74,7 @@ jobs:
         run: |
           URL=$(az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
             --parameters "$PARAM_FILE" \
-            --parameters \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
@@ -115,9 +109,7 @@ jobs:
             echo "First deployment detected: bootstrapping infrastructure..."
             az deployment group create \
               --resource-group "$RESOURCE_GROUP" \
-              --template-file infra/main.bicep \
               --parameters "$PARAM_FILE" \
-              --parameters \
                 dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
                 arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
                 containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
@@ -141,9 +133,7 @@ jobs:
         run: |
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
             --parameters "$PARAM_FILE" \
-            --parameters \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
@@ -153,9 +143,7 @@ jobs:
         run: |
           URL=$(az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
             --parameters "$PARAM_FILE" \
-            --parameters \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
