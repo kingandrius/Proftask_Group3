@@ -6,8 +6,8 @@
 
 ## Deploy on `hq-booking-01` (Ubuntu in EduCloud)
 ```bash
-git clone <YOUR_REPO_URL>
-cd <YOUR_REPO_NAME>/old-environment/booking
+git clone https://github.com/kingandrius/Proftask_Group3
+cd https://github.com/kingandrius/Proftask_Group3/old-environment/booking
 bash setup.sh
 ```
 
