@@ -15,7 +15,7 @@ param arrivalsApiKey string
 @description('Common resource tags')
 param tags object
 
-var uniqueSuffix = take(toLower(uniqueString(resourceGroup().id)), 6)
+var uniqueSuffix = take(toLower(uniqueString(resourceGroup().id, location)), 6)
 var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 var kvSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 

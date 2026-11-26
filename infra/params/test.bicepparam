@@ -1,11 +1,11 @@
 using '../main.bicep'
 
-param location = 'swedencentral'
+param location = 'northeurope'
 param envName = 'test'
 param vnetAddressPrefix = '10.21.0.0/16'
 param acaSubnetPrefix = '10.21.0.0/23'
 param dbSubnetPrefix = '10.21.2.0/24'
-param dbSkuName = 'Standard_B2s'
+param dbSkuName = 'Standard_B1ms'
 param dbSkuTier = 'Burstable'
 param targetPort = 80
 param envLabel = 'Azure Cloud (Test)'
