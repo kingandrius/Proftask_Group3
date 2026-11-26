@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: booking_db
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  web:
+    build: ../../app
+    container_name: booking_web
+    ports:
+      - "80:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SSLMODE: disable
+      AUTH_MODE: legacy
+      LEGACY_STAFF_PASSWORD: ${LEGACY_STAFF_PASSWORD}
+      ENV_LABEL: ${ENV_LABEL}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  pgdata:

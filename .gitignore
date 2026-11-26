@@ -1,0 +1,7 @@
+# Never commit real secrets or local database volumes
+.env
+*.env
+!.env.example
+__pycache__/
+*.pyc
+pgdata/
