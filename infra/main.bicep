@@ -70,6 +70,9 @@ var tags = {
   Part: 'C'
   Environment: envName
   ManagedBy: 'Bicep'
+  service: 'booking'
+  department: 'ict'
+  park: 'all'
 }
 
 module network 'modules/network.bicep' = {
