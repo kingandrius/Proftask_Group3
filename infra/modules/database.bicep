@@ -29,13 +29,8 @@ param dbSkuTier string = 'Burstable'
 @description('Common resource tags')
 param tags object
 
-Run ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
-First deployment detected: bootstrapping infrastructure...
-WARNING: /home/runner/work/Proftask_Group3/Proftask_Group3/infra/modules/shared.bicep(109,1) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: output name 'dbPasswordSecretUri' suggests a secret [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+var uniqueSuffix = take(toLower(uniqueString(resourceGroup().id, location)), 6)
 
-WARNING: /home/runner/work/Proftask_Group3/Proftask_Group3/infra/modules/shared.bicep(109,1) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: output name 'dbPasswordSecretUri' suggests a secret [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
-
-ERROR: {"status":"Failed","error":{"code":"DeploymentFailed","target":"/subscriptions/***/resourceGroups/rg-fonteyn-g3-booking-test/providers/Microsoft.Resources/deployments/deployment1","message":"At least one resource deployment operation failed. Please list deployment operations for details. Please see https://aka.ms/arm-deployment-operations for usage details. Correlation ID: 01ef0f1d-55c5-4954-8948-1a9bb0a7dd70","details":[{"code":"InvalidResourceLocation","message":"The resource 'psql-fonteyn-g3-test-nla7id' already exists in location 'swedencentral' in resource group 'rg-fonteyn-g3-booking-test'. A resource with the same name cannot be created in location 'northeurope'. Please select a new resource name."}]}}
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: 'psql-fonteyn-g3-${envName}-${uniqueSuffix}'
   location: location
