@@ -11,6 +11,56 @@ AUTH_MODE = os.getenv("AUTH_MODE", "legacy")  # 'legacy' in EduCloud, 'entra' in
 LEGACY_STAFF_PASSWORD = os.getenv("LEGACY_STAFF_PASSWORD", "fonteynstaff2026")
 ARRIVALS_API_KEY = os.getenv("ARRIVALS_API_KEY", "")  # empty = open in legacy mode
 ENV_LABEL = os.getenv("ENV_LABEL", "Legacy DMZ (Single Server - EduCloud)")
+SEED_SAMPLE_DATA = os.getenv("SEED_SAMPLE_DATA", "true").lower() == "true"
+
+_db_initialized = False
+
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS bookings (
+    id SERIAL PRIMARY KEY,
+    guest_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    park_code VARCHAR(16) NOT NULL DEFAULT 'NL-HEL',
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    cabin_number VARCHAR(10) NOT NULL,
+    status VARCHAR(24) DEFAULT 'Confirmed'
+);
+"""
+
+SEED_SQL = """
+INSERT INTO bookings (guest_name, email, park_code, arrival_date, departure_date, cabin_number, status) VALUES
+('Jan de Vries', 'jan.devries@example.nl', 'NL-HEL', CURRENT_DATE, CURRENT_DATE + 3, 'C01', 'Arriving Today'),
+('Sophie Bakker', 'sophie.b@example.nl', 'NL-HEL', CURRENT_DATE, CURRENT_DATE + 5, 'C05', 'Arriving Today'),
+('Lucas Peeters', 'l.peeters@example.be', 'BE-01', CURRENT_DATE, CURRENT_DATE + 2, 'B10', 'Checked In'),
+('Emma Janssens', 'emma.j@example.be', 'BE-01', CURRENT_DATE, CURRENT_DATE + 4, 'B12', 'Arriving Today'),
+('Lukas Weber', 'l.weber@example.de', 'DE-01', CURRENT_DATE, CURRENT_DATE + 7, 'D15', 'Arriving Today'),
+('Hannah Mueller', 'h.mueller@example.de', 'DE-01', CURRENT_DATE - 1, CURRENT_DATE + 3, 'D02', 'Checked In'),
+('Bram Visser', 'bram.v@example.nl', 'NL-HEL', CURRENT_DATE - 2, CURRENT_DATE + 2, 'C08', 'Checked In'),
+('Lotte Smit', 'lotte.s@example.nl', 'NL-HEL', CURRENT_DATE + 1, CURRENT_DATE + 3, 'C20', 'Confirmed'),
+('Daan Meijer', 'daan.m@example.nl', 'NL-HEL', CURRENT_DATE + 2, CURRENT_DATE + 5, 'C21', 'Confirmed'),
+('Julia Mulder', 'julia.m@example.nl', 'NL-HEL', CURRENT_DATE + 2, CURRENT_DATE + 5, 'C22', 'Confirmed'),
+('Noah Bos', 'noah.bos@example.nl', 'NL-HEL', CURRENT_DATE + 5, CURRENT_DATE + 12, 'C24', 'Confirmed'),
+('Milan Vos', 'milan.vos@example.nl', 'NL-HEL', CURRENT_DATE - 3, CURRENT_DATE + 1, 'C18', 'Checked In'),
+('Tess Hendriks', 'tess.h@example.nl', 'NL-HEL', CURRENT_DATE + 4, CURRENT_DATE + 7, 'C19', 'Confirmed'),
+('Sem Dekker', 'sem.d@example.nl', 'NL-HEL', CURRENT_DATE + 4, CURRENT_DATE + 8, 'C03', 'Confirmed'),
+('Sara Brouwer', 'sara.b@example.nl', 'NL-HEL', CURRENT_DATE + 10, CURRENT_DATE + 14, 'C11', 'Confirmed'),
+('Marie Maes', 'marie.maes@example.be', 'BE-01', CURRENT_DATE - 1, CURRENT_DATE + 6, 'B14', 'Checked In'),
+('Louis Claes', 'louis.c@example.be', 'BE-01', CURRENT_DATE - 1, CURRENT_DATE + 6, 'B16', 'Checked In'),
+('Elena Mertens', 'elena.m@example.be', 'BE-01', CURRENT_DATE + 3, CURRENT_DATE + 10, 'B07', 'Confirmed'),
+('Arthur Willems', 'arthur.w@example.be', 'BE-01', CURRENT_DATE + 3, CURRENT_DATE + 10, 'B09', 'Confirmed'),
+('Nora Jacobs', 'nora.j@example.be', 'BE-01', CURRENT_DATE + 3, CURRENT_DATE + 10, 'B11', 'Confirmed'),
+('Leon Schmidt', 'leon.s@example.de', 'DE-01', CURRENT_DATE - 10, CURRENT_DATE - 1, 'D13', 'Completed'),
+('Mia Schneider', 'mia.s@example.de', 'DE-01', CURRENT_DATE - 5, CURRENT_DATE - 1, 'D23', 'Completed'),
+('Paul Fischer', 'paul.f@example.de', 'DE-01', CURRENT_DATE + 1, CURRENT_DATE + 6, 'D06', 'Confirmed'),
+('Clara Wagner', 'clara.w@example.de', 'DE-01', CURRENT_DATE + 1, CURRENT_DATE + 6, 'D04', 'Confirmed'),
+('Felix Becker', 'felix.b@example.de', 'DE-01', CURRENT_DATE + 15, CURRENT_DATE + 20, 'D25', 'Confirmed'),
+('Anna Hoffmann', 'anna.h@example.de', 'DE-01', CURRENT_DATE - 1, CURRENT_DATE + 5, 'D01', 'Checked In'),
+('Jonas Schaefer', 'jonas.s@example.de', 'DE-01', CURRENT_DATE + 8, CURRENT_DATE + 11, 'D17', 'Confirmed'),
+('Eva Kok', 'eva.kok@example.nl', 'NL-HEL', CURRENT_DATE - 8, CURRENT_DATE - 4, 'C05', 'Completed'),
+('Lars van Dijk', 'lars.vd@example.nl', 'NL-HEL', CURRENT_DATE - 4, CURRENT_DATE - 2, 'C22', 'Completed'),
+('Fleur Vermeulen', 'fleur.v@example.nl', 'NL-HEL', CURRENT_DATE + 12, CURRENT_DATE + 18, 'C25', 'Confirmed');
+"""
 
 
 def get_db_connection():
@@ -22,6 +72,41 @@ def get_db_connection():
         password=os.getenv("DB_PASSWORD", "ChangeMeLocalLab2026"),
         sslmode=os.getenv("DB_SSLMODE", "prefer"),
     )
+
+
+def init_db():
+    global _db_initialized
+    if _db_initialized:
+        return
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Prevent race conditions across Gunicorn workers and Container App replicas
+        cur.execute("SELECT pg_advisory_xact_lock(7391042)")
+        cur.execute(SCHEMA_SQL)
+        if SEED_SAMPLE_DATA:
+            cur.execute("SELECT COUNT(*) FROM bookings")
+            if cur.fetchone()[0] == 0:
+                cur.execute(SEED_SQL)
+        conn.commit()
+        cur.close()
+        _db_initialized = True
+        app.logger.info("PostgreSQL schema verified and initialized.")
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        app.logger.warning("Database initialization deferred: %s", exc)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.before_request
+def ensure_db_initialized():
+    if not _db_initialized:
+        init_db()
 
 
 MAIN_TEMPLATE = """<!DOCTYPE html>
@@ -294,6 +379,8 @@ def health():
     except Exception as exc:
         return jsonify({"status": "unhealthy", "host": socket.gethostname(), "error": str(exc)}), 503
 
+
+init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
