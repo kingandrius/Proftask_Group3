@@ -40,6 +40,12 @@ param dbPasswordSecretUri string
 @description('Key Vault secret URI for arrivals API key')
 param arrivalsApiKeySecretUri string
 
+@description('Entra ID App Registration client ID for Easy Auth (optional)')
+param entraClientId string = ''
+
+@description('Key Vault secret URI for Entra ID client secret (optional)')
+param entraClientSecretUri string = ''
+
 @description('Banner label displayed in the web UI')
 param envLabel string
 
@@ -54,6 +60,29 @@ param maxReplicas int
 
 @description('Common resource tags')
 param tags object
+
+var enableEntraAuth = !empty(entraClientId) && !empty(entraClientSecretUri)
+
+var baseSecrets = [
+  {
+    name: 'db-admin-password'
+    keyVaultUrl: dbPasswordSecretUri
+    identity: uamiId
+  }
+  {
+    name: 'arrivals-api-key'
+    keyVaultUrl: arrivalsApiKeySecretUri
+    identity: uamiId
+  }
+]
+
+var authSecrets = enableEntraAuth ? [
+  {
+    name: 'microsoft-provider-authentication-secret'
+    keyVaultUrl: entraClientSecretUri
+    identity: uamiId
+  }
+] : []
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsWorkspaceName
@@ -111,18 +140,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
           identity: uamiId
         }
       ]
-      secrets: [
-        {
-          name: 'db-admin-password'
-          keyVaultUrl: dbPasswordSecretUri
-          identity: uamiId
-        }
-        {
-          name: 'arrivals-api-key'
-          keyVaultUrl: arrivalsApiKeySecretUri
-          identity: uamiId
-        }
-      ]
+      secrets: concat(baseSecrets, authSecrets)
     }
     template: {
       containers: [
@@ -194,6 +212,38 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
           }
         ]
       }
+    }
+  }
+}
+
+resource authConfig 'Microsoft.App/containerApps/authConfigs@2025-01-01' = if (enableEntraAuth) {
+  parent: containerApp
+  name: 'current'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'AllowAnonymous'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: 'https://sts.windows.net/${subscription().tenantId}/v2.0'
+          clientId: entraClientId
+          clientSecretSettingName: 'microsoft-provider-authentication-secret'
+        }
+        validation: {
+          allowedAudiences: [
+            'api://${entraClientId}'
+            entraClientId
+          ]
+        }
+      }
+    }
+    login: {
+      preserveUrlFragmentsForLogins: true
     }
   }
 }

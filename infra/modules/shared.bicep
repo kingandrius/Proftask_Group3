@@ -12,6 +12,10 @@ param dbAdminPassword string
 @secure()
 param arrivalsApiKey string
 
+@description('Entra ID App Registration client secret for Easy Auth (optional)')
+@secure()
+param entraClientSecret string = ''
+
 @description('Common resource tags')
 param tags object
 
@@ -101,6 +105,14 @@ resource arrivalsApiKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
+resource entraClientSecretVault 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(entraClientSecret)) {
+  parent: keyVault
+  name: 'entra-client-secret'
+  properties: {
+    value: entraClientSecret
+  }
+}
+
 output logAnalyticsWorkspaceName string = logAnalytics.name
 output acrName string = acr.name
 output acrLoginServer string = acr.properties.loginServer
@@ -108,3 +120,4 @@ output uamiId string = uami.id
 output keyVaultName string = keyVault.name
 output dbPasswordSecretUri string = dbPasswordSecret.properties.secretUri
 output arrivalsApiKeySecretUri string = arrivalsApiKeySecret.properties.secretUri
+output entraClientSecretUri string = !empty(entraClientSecret) ? entraClientSecretVault.properties.secretUri : ''

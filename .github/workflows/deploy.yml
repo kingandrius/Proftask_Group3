@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   deploy-test:
-    name: Deploy to Test (Sweden Central)
+    name: Deploy to Test (North Europe)
     runs-on: ubuntu-latest
     environment: test
     env:
@@ -23,7 +23,7 @@ jobs:
       PARAM_FILE: infra/params/test.bicepparam
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure Login (OIDC)
         uses: azure/login@v3
@@ -43,6 +43,8 @@ jobs:
               --parameters "$PARAM_FILE" \
                 dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
                 arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+                entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+                entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
                 containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
                 enableHealthProbes=false
             ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
@@ -67,6 +69,8 @@ jobs:
             --parameters "$PARAM_FILE" \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+              entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
               enableHealthProbes=true
 
@@ -77,13 +81,15 @@ jobs:
             --parameters "$PARAM_FILE" \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+              entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
               enableHealthProbes=true \
             --query properties.outputs.containerAppUrl.value -o tsv)
           echo "Test Booking Portal live at: $URL"
 
   deploy-prod:
-    name: Deploy to Prod (Requires Approval)
+    name: Deploy to Prod (North Europe - Requires Approval)
     needs: deploy-test
     runs-on: ubuntu-latest
     environment: prod
@@ -92,7 +98,7 @@ jobs:
       PARAM_FILE: infra/params/prod.bicepparam
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure Login (OIDC)
         uses: azure/login@v3
@@ -112,6 +118,8 @@ jobs:
               --parameters "$PARAM_FILE" \
                 dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
                 arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+                entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+                entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
                 containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
                 enableHealthProbes=false
             ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
@@ -136,6 +144,8 @@ jobs:
             --parameters "$PARAM_FILE" \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+              entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
               enableHealthProbes=true
 
@@ -146,6 +156,8 @@ jobs:
             --parameters "$PARAM_FILE" \
               dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
               arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              entraClientId="${{ secrets.ENTRA_CLIENT_ID }}" \
+              entraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" \
               containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
               enableHealthProbes=true \
             --query properties.outputs.containerAppUrl.value -o tsv)

@@ -30,6 +30,13 @@ param dbAdminPassword string
 @secure()
 param arrivalsApiKey string
 
+@description('Entra ID App Registration client ID for Easy Auth (optional)')
+param entraClientId string = ''
+
+@description('Entra ID App Registration client secret for Easy Auth (optional)')
+@secure()
+param entraClientSecret string = ''
+
 @description('PostgreSQL SKU name')
 param dbSkuName string = 'Standard_B1ms'
 
@@ -84,6 +91,7 @@ module shared 'modules/shared.bicep' = {
     envName: envName
     dbAdminPassword: dbAdminPassword
     arrivalsApiKey: arrivalsApiKey
+    entraClientSecret: entraClientSecret
     tags: tags
   }
 }
@@ -121,6 +129,8 @@ module containerApps 'modules/containerapps.bicep' = {
     dbAdminUser: dbAdminUser
     dbPasswordSecretUri: shared.outputs.dbPasswordSecretUri
     arrivalsApiKeySecretUri: shared.outputs.arrivalsApiKeySecretUri
+    entraClientId: entraClientId
+    entraClientSecretUri: shared.outputs.entraClientSecretUri
     envLabel: envLabel
     authMode: authMode
     minReplicas: minReplicas
