@@ -1,0 +1,164 @@
+name: Deploy Part C Booking Platform
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-test:
+    name: Deploy to Test (Sweden Central)
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      RESOURCE_GROUP: rg-fonteyn-g3-booking-test
+      PARAM_FILE: infra/params/test.bicepparam
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Bootstrap infrastructure on first run (if ACR does not exist yet)
+        id: check_acr
+        run: |
+          ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+          if [ -z "$ACR_NAME" ]; then
+            echo "First deployment detected: bootstrapping infrastructure..."
+            az deployment group create \
+              --resource-group "$RESOURCE_GROUP" \
+              --template-file infra/main.bicep \
+              --parameters "$PARAM_FILE" \
+              --parameters \
+                dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+                arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+                containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
+                enableHealthProbes=false
+            ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+            echo "Waiting 20s for AcrPull / Key Vault RBAC propagation..."
+            sleep 20
+          fi
+          ACR_LOGIN_SERVER=$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push booking-web image to ACR
+        run: |
+          az acr build \
+            --registry "${{ steps.check_acr.outputs.acr_name }}" \
+            --image "booking-web:${{ github.sha }}" \
+            ./app
+
+      - name: Preview Bicep changes (what-if)
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --parameters \
+              dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+              arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
+              enableHealthProbes=true
+
+      - name: Deploy infrastructure and application to Test
+        run: |
+          URL=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --parameters \
+              dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+              arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
+              enableHealthProbes=true \
+            --query properties.outputs.containerAppUrl.value -o tsv)
+          echo "Test Booking Portal live at: $URL"
+
+  deploy-prod:
+    name: Deploy to Prod (Requires Approval)
+    needs: deploy-test
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      RESOURCE_GROUP: rg-fonteyn-g3-booking-prod
+      PARAM_FILE: infra/params/prod.bicepparam
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Bootstrap infrastructure on first run (if ACR does not exist yet)
+        id: check_acr
+        run: |
+          ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+          if [ -z "$ACR_NAME" ]; then
+            echo "First deployment detected: bootstrapping infrastructure..."
+            az deployment group create \
+              --resource-group "$RESOURCE_GROUP" \
+              --template-file infra/main.bicep \
+              --parameters "$PARAM_FILE" \
+              --parameters \
+                dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+                arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+                containerImage="mcr.microsoft.com/k8se/quickstart:latest" \
+                enableHealthProbes=false
+            ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+            echo "Waiting 20s for AcrPull / Key Vault RBAC propagation..."
+            sleep 20
+          fi
+          ACR_LOGIN_SERVER=$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push booking-web image to ACR
+        run: |
+          az acr build \
+            --registry "${{ steps.check_acr.outputs.acr_name }}" \
+            --image "booking-web:${{ github.sha }}" \
+            ./app
+
+      - name: Preview Bicep changes (what-if)
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --parameters \
+              dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+              arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
+              enableHealthProbes=true
+
+      - name: Deploy infrastructure and application to Prod
+        run: |
+          URL=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --parameters \
+              dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+              arrivalsApiKey="${{ secrets.ARRIVALS_API_KEY }}" \
+              containerImage="${{ steps.check_acr.outputs.acr_login_server }}/booking-web:${{ github.sha }}" \
+              enableHealthProbes=true \
+            --query properties.outputs.containerAppUrl.value -o tsv)
+          echo "Prod Booking Portal live at: $URL"
